@@ -78,6 +78,24 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.userId);
     }
     
+    // Income collection
+    match /income/{incomeId} {
+      // All authenticated users can read income data
+      allow read: if isAuthenticated();
+      
+      // Users can create their own income entries
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own income, supervisors can update sentToSupervisor field
+      allow update: if isOwner(resource.data.userId) ||
+                       (isSupervisor() && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sentToSupervisor', 'sentAt']));
+      
+      // Only owners can delete their income data
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

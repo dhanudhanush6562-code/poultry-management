@@ -112,6 +112,10 @@ app.get('/supervisor-dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'supervisor-dashboard.html'));
 });
 
+app.get('/database-inspector', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'database-inspector.html'));
+});
+
 app.get('/profile', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'profile.html'));
 });

@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Supervisor logged in:', currentSupervisor.email);
         document.getElementById('supervisorName').textContent = currentSupervisor.fullName;
         loadAllData();
+        loadSupervisorIncomeData();
     }
 });
 
@@ -87,6 +88,7 @@ function showAlert(message, type = 'info') {
 document.getElementById('refreshDataBtn')?.addEventListener('click', () => {
     console.log('Refreshing data...');
     loadAllData();
+    loadSupervisorIncomeData();
 });
 
 // Load all data sent to supervisor
@@ -282,16 +284,9 @@ function displayUserBatches() {
                     </div>
                     
                     <div style="margin-top: 1.5rem;">
-                        <h5>Egg Production Trend</h5>
-                        <div class="chart-container">
-                            <canvas id="eggChart_${userId}_${batchId}"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 1.5rem;">
-                        <h5>Mortality Trend</h5>
-                        <div class="chart-container">
-                            <canvas id="mortalityChart_${userId}_${batchId}"></canvas>
+                        <h5>📊 Egg Production & Mortality Trend</h5>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="combinedChart_${userId}_${batchId}"></canvas>
                         </div>
                     </div>
                 </div>
@@ -324,53 +319,80 @@ function createBatchCharts(userId, batchId, batchData) {
     const eggs = sortedData.map(d => d.eggCount);
     const mortality = sortedData.map(d => d.mortality);
 
-    // Egg chart
-    const eggCtx = document.getElementById(`eggChart_${userId}_${batchId}`);
-    if (eggCtx) {
-        new Chart(eggCtx, {
+    // Combined chart with dual y-axes
+    const combinedCtx = document.getElementById(`combinedChart_${userId}_${batchId}`);
+    if (combinedCtx) {
+        new Chart(combinedCtx, {
             type: 'line',
             data: {
                 labels: dates,
-                datasets: [{
-                    label: 'Egg Count',
-                    data: eggs,
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
+                datasets: [
+                    {
+                        label: '🥚 Egg Production',
+                        data: eggs,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '💀 Mortality',
+                        data: mortality,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y1'
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
-                    legend: { display: true }
-                }
-            }
-        });
-    }
-
-    // Mortality chart
-    const mortalityCtx = document.getElementById(`mortalityChart_${userId}_${batchId}`);
-    if (mortalityCtx) {
-        new Chart(mortalityCtx, {
-            type: 'line',
-            data: {
-                labels: dates,
-                datasets: [{
-                    label: 'Mortality',
-                    data: mortality,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true }
+                    legend: { 
+                        display: true,
+                        position: 'top'
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Egg Count',
+                            color: '#10b981'
+                        },
+                        ticks: {
+                            color: '#10b981'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Mortality',
+                            color: '#ef4444'
+                        },
+                        ticks: {
+                            color: '#ef4444'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        }
+                    }
                 }
             }
         });
@@ -605,6 +627,321 @@ document.getElementById('generateReportBtn').addEventListener('click', () => {
         module.generatePDFReport(filteredData, currentSupervisor);
     });
 });
+
+// ============ INCOME FUNCTIONALITY FOR SUPERVISOR ============
+
+// Load income data sent to supervisor
+async function loadSupervisorIncomeData() {
+    try {
+        console.log('Loading income data for supervisor:', currentSupervisor.email);
+        
+        const q = query(collection(db, 'income'));
+        const querySnapshot = await getDocs(q);
+        
+        let incomeData = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            // Filter by supervisor email and sentToSupervisor flag
+            if (data.sentToSupervisor === true && data.supervisorEmail === currentSupervisor.email) {
+                incomeData.push({ id: doc.id, ...data });
+            }
+        });
+        
+        console.log('Found income entries for supervisor:', incomeData.length);
+        
+        // Sort by date descending
+        incomeData.sort((a, b) => b.date.localeCompare(a.date));
+        
+        // Calculate totals
+        let totalIncome = 0;
+        let eggSales = 0;
+        let meatSales = 0;
+        
+        incomeData.forEach(item => {
+            totalIncome += item.amount;
+            if (item.incomeType === 'Egg Sale') {
+                eggSales += item.amount;
+            } else if (item.incomeType === 'Meat Sale') {
+                meatSales += item.amount;
+            }
+        });
+        
+        // Update summary cards
+        document.getElementById('supervisorTotalIncome').textContent = totalIncome.toFixed(2);
+        document.getElementById('supervisorEggSales').textContent = eggSales.toFixed(2);
+        document.getElementById('supervisorMeatSales').textContent = meatSales.toFixed(2);
+        
+        // Display in table
+        const tbody = document.getElementById('supervisorIncomeTableBody');
+        tbody.innerHTML = '';
+        
+        if (incomeData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No income data available</td></tr>';
+            return;
+        }
+        
+        incomeData.forEach(item => {
+            const row = document.createElement('tr');
+            const typeIcon = item.incomeType === 'Egg Sale' ? '🥚' : '🍗';
+            
+            row.innerHTML = `
+                <td>${item.date}</td>
+                <td>${item.userName}</td>
+                <td>${typeIcon} ${item.incomeType}</td>
+                <td>${item.batchId}</td>
+                <td>${item.quantity} ${item.unit}</td>
+                <td style="font-weight: bold; color: #10b981;">₹${item.amount.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-info view-supervisor-income-btn" data-id="${item.id}">View</button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        // Add event listeners
+        document.querySelectorAll('.view-supervisor-income-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                viewSupervisorIncomeDetail(id);
+            });
+        });
+        
+    } catch (error) {
+        console.error('Error loading supervisor income data:', error);
+        showAlert('Error loading income data: ' + error.message, 'error');
+    }
+}
+
+// View income detail
+async function viewSupervisorIncomeDetail(docId) {
+    try {
+        const docRef = doc(db, 'income', docId);
+        const docSnap = await getDoc(docRef);
+        
+        if (!docSnap.exists()) {
+            showAlert('Income entry not found', 'error');
+            return;
+        }
+        
+        const data = docSnap.data();
+        const typeIcon = data.incomeType === 'Egg Sale' ? '🥚' : '🍗';
+        
+        const detailContent = document.getElementById('supervisorIncomeDetailContent');
+        detailContent.innerHTML = `
+            <div style="padding: 1.5rem;">
+                <p style="margin: 0.5rem 0;"><strong>User:</strong> ${data.userName}</p>
+                <p style="margin: 0.5rem 0;"><strong>Farm:</strong> ${data.farmName}</p>
+                <p style="margin: 0.5rem 0;"><strong>Income Type:</strong> ${typeIcon} ${data.incomeType}</p>
+                <p style="margin: 0.5rem 0;"><strong>Date:</strong> ${data.date}</p>
+                <p style="margin: 0.5rem 0;"><strong>Batch ID:</strong> ${data.batchId}</p>
+                <p style="margin: 0.5rem 0;"><strong>Quantity:</strong> ${data.quantity} ${data.unit}</p>
+                <p style="margin: 0.5rem 0;"><strong>Amount:</strong> <span style="font-size: 1.5rem; font-weight: bold; color: #10b981;">₹${data.amount.toFixed(2)}</span></p>
+                ${data.notes ? `<p style="margin: 0.5rem 0;"><strong>Notes:</strong> ${data.notes}</p>` : ''}
+                <p style="margin: 0.5rem 0; color: #666; font-size: 0.9rem;"><strong>Sent At:</strong> ${new Date(data.sentAt).toLocaleString()}</p>
+            </div>
+        `;
+        
+        document.getElementById('supervisorIncomeDetailModal').classList.add('active');
+    } catch (error) {
+        console.error('Error viewing income detail:', error);
+        showAlert('Error loading details: ' + error.message, 'error');
+    }
+}
+
+// Close income detail modal
+window.closeSupervisorIncomeDetailModal = function() {
+    document.getElementById('supervisorIncomeDetailModal').classList.remove('active');
+};
+
+// View income graph
+document.getElementById('viewIncomeGraphSupervisorBtn')?.addEventListener('click', async () => {
+    await loadSupervisorIncomeGraph();
+    document.getElementById('supervisorIncomeGraphModal').classList.add('active');
+});
+
+// Close income graph modal
+window.closeSupervisorIncomeGraphModal = function() {
+    document.getElementById('supervisorIncomeGraphModal').classList.remove('active');
+};
+
+// Load income graph
+async function loadSupervisorIncomeGraph() {
+    try {
+        const q = query(collection(db, 'income'));
+        const querySnapshot = await getDocs(q);
+        
+        let incomeData = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.sentToSupervisor === true && data.supervisorEmail === currentSupervisor.email) {
+                incomeData.push(data);
+            }
+        });
+        
+        // Group by month
+        const monthlyData = {};
+        const userTotals = {};
+        
+        incomeData.forEach(item => {
+            const date = new Date(item.date);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = {
+                    eggSales: 0,
+                    meatSales: 0
+                };
+            }
+            
+            if (item.incomeType === 'Egg Sale') {
+                monthlyData[monthKey].eggSales += item.amount;
+            } else if (item.incomeType === 'Meat Sale') {
+                monthlyData[monthKey].meatSales += item.amount;
+            }
+            
+            // Group by user
+            if (!userTotals[item.userName]) {
+                userTotals[item.userName] = 0;
+            }
+            userTotals[item.userName] += item.amount;
+        });
+        
+        // Sort by month
+        const sortedMonths = Object.keys(monthlyData).sort();
+        const labels = sortedMonths.map(m => {
+            const [year, month] = m.split('-');
+            const date = new Date(year, month - 1);
+            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        });
+        
+        const eggSalesData = sortedMonths.map(m => monthlyData[m].eggSales);
+        const meatSalesData = sortedMonths.map(m => monthlyData[m].meatSales);
+        
+        // Monthly trend chart
+        const existingChart1 = Chart.getChart('supervisorIncomeChart');
+        if (existingChart1) {
+            existingChart1.destroy();
+        }
+        
+        const ctx1 = document.getElementById('supervisorIncomeChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Egg Sales (₹)',
+                        data: eggSalesData,
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Meat Sales (₹)',
+                        data: meatSalesData,
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Monthly Income Trend',
+                        font: { size: 18 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // By user chart
+        const existingChart2 = Chart.getChart('supervisorIncomeByUserChart');
+        if (existingChart2) {
+            existingChart2.destroy();
+        }
+        
+        const userNames = Object.keys(userTotals);
+        const userAmounts = Object.values(userTotals);
+        
+        const ctx2 = document.getElementById('supervisorIncomeByUserChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: userNames,
+                datasets: [{
+                    label: 'Total Income by User (₹)',
+                    data: userAmounts,
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(139, 92, 246, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(139, 92, 246, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Income by User',
+                        font: { size: 18 }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading income graph:', error);
+        showAlert('Error loading graph: ' + error.message, 'error');
+    }
+}
 
 // Logout
 document.getElementById('logoutBtn').addEventListener('click', async () => {

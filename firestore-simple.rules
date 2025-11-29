@@ -1,5 +1,4 @@
-rules_version = '2';
-service cloud.firestore {
+rules_version = 'service cloud.firestore {
   match /databases/{database}/documents {
     
     // Simple rules for development - authenticated users can read/write their own data
@@ -31,6 +30,26 @@ service cloud.firestore {
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sentToSupervisor', 'sentAt']));
       
       // Users can delete their own data
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Income collection
+    match /income/{incomeId} {
+      // Authenticated users can read their own income data
+      // Supervisors can read income data sent to them
+      allow read: if request.auth != null && 
+                     (resource.data.userId == request.auth.uid || 
+                      (resource.data.sentToSupervisor == true && 
+                       resource.data.supervisorEmail == request.auth.token.email));
+      
+      // Users can create their own income entries
+      allow create: if request.auth != null && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own income entries
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own income entries
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     

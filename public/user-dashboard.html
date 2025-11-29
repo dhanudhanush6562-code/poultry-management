@@ -23,6 +23,14 @@
 
         <div id="alertContainer"></div>
 
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="daily-data" onclick="switchTab('daily-data')">📊 Daily Data</button>
+            <button class="tab-btn" data-tab="income" onclick="switchTab('income')">💰 Income</button>
+        </div>
+
+        <!-- Daily Data Tab -->
+        <div id="daily-data-tab" class="tab-content active">
         <!-- Add Daily Data Form -->
         <div class="card">
             <div class="card-header">Add Daily Data</div>
@@ -75,13 +83,24 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Supervisor Email (to send data)</label>
-                    <input type="email" id="supervisorEmail" class="form-control" placeholder="supervisor@email.com">
+                    <label style="font-weight: bold; color: var(--primary-color);">Supervisor Email (Required to send data) *</label>
+                    <input type="email" id="supervisorEmail" class="form-control" placeholder="supervisor@email.com" 
+                           style="border: 2px solid var(--primary-color);">
+                    <small style="color: #666;">Enter your supervisor's email address. They must have a supervisor account.</small>
                 </div>
 
-                <div class="flex gap-2">
-                    <button type="submit" class="btn btn-primary">Save Data</button>
-                    <button type="button" id="sendToSupervisorBtn" class="btn btn-success">Send to Supervisor</button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;">💾 Save Data</button>
+                    <button type="button" id="sendToSupervisorBtn" class="btn btn-success" style="flex: 1; min-width: 150px;">📤 Send to Supervisor</button>
+                </div>
+                
+                <div style="margin-top: 1rem; padding: 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>⚠️ Important:</strong> 
+                    <ol style="margin: 0.5rem 0 0 1rem; padding: 0;">
+                        <li>Enter Supervisor Email above</li>
+                        <li>Click "💾 Save Data" first</li>
+                        <li>Then click "📤 Send to Supervisor"</li>
+                    </ol>
                 </div>
             </form>
         </div>
@@ -125,6 +144,140 @@
                 </table>
             </div>
         </div>
+        </div>
+        <!-- End Daily Data Tab -->
+
+        <!-- Income Tab -->
+        <div id="income-tab" class="tab-content">
+        <!-- Add Income Entry Form -->
+        <div class="card">
+                <div class="card-header">💰 Add Income Entry</div>
+                
+                <form id="incomeForm">
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" id="incomeDate" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Income Type *</label>
+                        <select id="incomeType" class="form-control" required>
+                            <option value="">-- Select Type --</option>
+                            <option value="Egg Sale">🥚 Egg Sale</option>
+                            <option value="Meat Sale">🍗 Meat Sale</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Batch ID</label>
+                        <input type="text" id="incomeBatchId" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="incomeQuantity" class="form-control" min="0" step="0.01" placeholder="e.g., 1000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <input type="text" id="incomeUnit" class="form-control" placeholder="e.g., eggs, kg, trays" value="eggs">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount (₹) *</label>
+                        <input type="number" id="incomeAmount" class="form-control" min="0" step="0.01" placeholder="Revenue amount" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="incomeNotes" class="form-control" rows="3" placeholder="Additional details..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: bold; color: var(--primary-color);">Supervisor Email (Required to send data) *</label>
+                        <input type="email" id="incomeSupervisorEmail" class="form-control" placeholder="supervisor@email.com" 
+                               style="border: 2px solid var(--primary-color);">
+                        <small style="color: #666;">Enter your supervisor's email address to share income data.</small>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;">💾 Save Income Entry</button>
+                        <button type="button" id="sendIncomeToSupervisorBtn" class="btn btn-success" style="flex: 1; min-width: 150px;">📤 Send to Supervisor</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Income History -->
+            <div class="card">
+                <div class="card-header">Income History</div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Filter by Type</label>
+                        <select id="filterIncomeType" class="form-control">
+                            <option value="">All Types</option>
+                            <option value="Egg Sale">Egg Sale</option>
+                            <option value="Meat Sale">Meat Sale</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>From Date</label>
+                        <input type="date" id="filterIncomeFromDate" class="form-control">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date</label>
+                        <input type="date" id="filterIncomeToDate" class="form-control">
+                    </div>
+                    <div class="filter-group" style="display: flex; align-items: flex-end;">
+                        <button id="applyIncomeFilterBtn" class="btn btn-primary">Apply Filter</button>
+                    </div>
+                </div>
+
+                <div style="margin: 1rem 0; padding: 1rem; background: #e7f3ff; border-radius: 8px;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #333;">Total Income Summary</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <p style="margin: 0; color: #666; font-size: 14px;">Total Income</p>
+                            <p style="margin: 0; font-size: 24px; font-weight: bold; color: #10b981;">₹<span id="totalIncome">0</span></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; color: #666; font-size: 14px;">Egg Sales</p>
+                            <p style="margin: 0; font-size: 24px; font-weight: bold; color: #3b82f6;">₹<span id="totalEggSales">0</span></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; color: #666; font-size: 14px;">Meat Sales</p>
+                            <p style="margin: 0; font-size: 24px; font-weight: bold; color: #ef4444;">₹<span id="totalMeatSales">0</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="incomeTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Batch ID</th>
+                                <th>Quantity</th>
+                                <th>Amount (₹)</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center">No income entries available</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <button id="viewIncomeGraphBtn" class="btn btn-success" style="margin-top: 1rem; width: 100%;">
+                    📈 View Monthly Income Graph
+                </button>
+            </div>
+        </div>
+        <!-- End Income Tab -->
     </div>
 
     <!-- View Detail Modal -->
@@ -138,6 +291,63 @@
         </div>
     </div>
 
+    <!-- Income Detail Modal -->
+    <div id="incomeDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 Income Details</h2>
+                <span class="close-modal" onclick="closeIncomeDetailModal()">&times;</span>
+            </div>
+            <div id="incomeDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Income Graph Modal -->
+    <div id="incomeGraphModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>📈 Monthly Income Trend</h2>
+                <span class="close-modal" onclick="closeIncomeGraphModal()">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <canvas id="incomeChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script>
+        // Global tab switching function
+        function switchTab(tabName) {
+            console.log('Switching to tab:', tabName);
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Remove active class from all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab button
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Add active class to corresponding tab content
+            const tabContent = document.getElementById(`${tabName}-tab`);
+            if (tabContent) {
+                tabContent.classList.add('active');
+                console.log('Tab content activated:', tabName);
+            } else {
+                console.error('Tab content not found:', `${tabName}-tab`);
+            }
+            
+            console.log('Tab switched to:', tabName);
+        }
+    </script>
+    
     <script type="module" src="js/firebase-config.js"></script>
     <script type="module" src="js/user-dashboard.js"></script>
 </body>

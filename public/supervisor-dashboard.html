@@ -101,6 +101,54 @@
             <div id="userBatchesContainer"></div>
         </div>
 
+        <!-- Income Data Section -->
+        <div class="card">
+            <div class="card-header">💰 Income Data from Users</div>
+            
+            <div style="margin: 1rem 0; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+                <h3 style="margin: 0 0 1rem 0; color: white;">Total Income Summary</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px);">
+                        <p style="margin: 0; font-size: 14px; opacity: 0.9;">Total Income</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 32px; font-weight: bold;">₹<span id="supervisorTotalIncome">0</span></p>
+                    </div>
+                    <div style="background: rgba(59, 130, 246, 0.3); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px);">
+                        <p style="margin: 0; font-size: 14px; opacity: 0.9;">🥚 Egg Sales</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 32px; font-weight: bold;">₹<span id="supervisorEggSales">0</span></p>
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.3); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px);">
+                        <p style="margin: 0; font-size: 14px; opacity: 0.9;">🍗 Meat Sales</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 32px; font-weight: bold;">₹<span id="supervisorMeatSales">0</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="supervisorIncomeTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>Type</th>
+                            <th>Batch ID</th>
+                            <th>Quantity</th>
+                            <th>Amount (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="supervisorIncomeTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center">No income data available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <button id="viewIncomeGraphSupervisorBtn" class="btn btn-success" style="margin-top: 1rem; width: 100%;">
+                📈 View Income Analysis
+            </button>
+        </div>
+
         <!-- Monthly View Charts -->
         <div class="card hidden" id="monthlyViewCard">
             <div class="card-header">Monthly Comparison - All Users</div>
@@ -121,6 +169,33 @@
                 <span class="close-modal" onclick="closeDetailModal()">&times;</span>
             </div>
             <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- Income Detail Modal -->
+    <div id="supervisorIncomeDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 Income Details</h2>
+                <span class="close-modal" onclick="closeSupervisorIncomeDetailModal()">&times;</span>
+            </div>
+            <div id="supervisorIncomeDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Income Analysis Modal -->
+    <div id="supervisorIncomeGraphModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h2>📈 Income Analysis - All Users</h2>
+                <span class="close-modal" onclick="closeSupervisorIncomeGraphModal()">&times;</span>
+            </div>
+            <div style="padding: 2rem;">
+                <canvas id="supervisorIncomeChart" width="400" height="200"></canvas>
+                <div style="margin-top: 2rem;">
+                    <canvas id="supervisorIncomeByUserChart" width="400" height="200"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 

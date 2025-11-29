@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Inspector - Poultry Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1f2eb;
+            color: #0f5132;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #664d03;
+        }
+
+        .json-view {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow: auto;
+        }
+
+        .highlight-email {
+            background: yellow;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #cfe2ff;
+            border: 1px solid #9ec5fe;
+            color: #084298;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c2c7;
+            color: #842029;
+        }
+
+        .filter-input {
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 300px;
+            margin-right: 10px;
+        }
+
+        .console-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow: auto;
+            margin-top: 20px;
+        }
+
+        .console-log div {
+            margin: 5px 0;
+        }
+
+        .console-error {
+            color: #f48771;
+        }
+
+        .console-success {
+            color: #89d185;
+        }
+
+        .console-warning {
+            color: #e5c07b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Firestore Database Inspector</h1>
+
+        <div class="alert alert-info">
+            <strong>Purpose:</strong> This page directly inspects all documents in the <code>dailyData</code> collection 
+            to help debug why supervisor dashboard isn't showing data.
+        </div>
+
+        <div class="controls">
+            <button id="loadAllBtn" onclick="loadAllDocuments()">🔄 Load All Documents</button>
+            <button id="loadUsersBtn" onclick="loadUsers()">👥 Load Users Collection</button>
+            <button id="clearBtn" onclick="clearConsole()">🗑️ Clear Console</button>
+            <input type="email" id="filterEmail" class="filter-input" placeholder="Filter by supervisor email...">
+            <button onclick="filterByEmail()">🔍 Filter</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Documents</h3>
+                <p id="totalDocs">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Sent to Supervisor</h3>
+                <p id="sentDocs">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Not Sent</h3>
+                <p id="notSentDocs">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Missing Email</h3>
+                <p id="missingEmail">0</p>
+            </div>
+        </div>
+
+        <div id="tableContainer"></div>
+
+        <div class="console-log" id="consoleLog">
+            <div>Console output will appear here...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNPl5yfCP9ZZmBSci4M2IZvj9_0_BIEuQ",
+            authDomain: "poutry-management.firebaseapp.com",
+            projectId: "poutry-management",
+            storageBucket: "poutry-management.firebasestorage.app",
+            messagingSenderId: "207326716424",
+            appId: "1:207326716424:web:a4e92aa9aa4f6bca74e1a3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.query = query;
+        window.where = where;
+
+        let allDocuments = [];
+
+        function log(message, type = 'info') {
+            const consoleLog = document.getElementById('consoleLog');
+            const div = document.createElement('div');
+            div.className = `console-${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleLog.appendChild(div);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+            console.log(message);
+        }
+
+        window.clearConsole = function() {
+            document.getElementById('consoleLog').innerHTML = '<div>Console cleared...</div>';
+        }
+
+        window.loadAllDocuments = async function() {
+            try {
+                document.getElementById('loadAllBtn').disabled = true;
+                log('🔄 Loading all documents from dailyData collection...', 'info');
+
+                const querySnapshot = await getDocs(collection(db, 'dailyData'));
+                allDocuments = [];
+                
+                let sentCount = 0;
+                let notSentCount = 0;
+                let missingEmailCount = 0;
+
+                log(`📊 Found ${querySnapshot.size} total documents`, 'success');
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    allDocuments.push({ id: doc.id, ...data });
+
+                    // Count statistics
+                    if (data.sentToSupervisor === true) {
+                        sentCount++;
+                    } else {
+                        notSentCount++;
+                    }
+
+                    if (!data.supervisorEmail || data.supervisorEmail.trim() === '') {
+                        missingEmailCount++;
+                    }
+
+                    // Detailed logging
+                    log(`📄 Document ${doc.id}:`, 'info');
+                    log(`   sentToSupervisor: ${data.sentToSupervisor} (type: ${typeof data.sentToSupervisor})`, 'info');
+                    log(`   supervisorEmail: "${data.supervisorEmail}" (type: ${typeof data.supervisorEmail}, length: ${data.supervisorEmail ? data.supervisorEmail.length : 0})`, 'info');
+                    log(`   batchId: ${data.batchId}`, 'info');
+                    log(`   date: ${data.date}`, 'info');
+                    log(`   userName: ${data.userName}`, 'info');
+                    log(`   userId: ${data.userId}`, 'info');
+                    log('---', 'info');
+                });
+
+                // Update stats
+                document.getElementById('totalDocs').textContent = querySnapshot.size;
+                document.getElementById('sentDocs').textContent = sentCount;
+                document.getElementById('notSentDocs').textContent = notSentCount;
+                document.getElementById('missingEmail').textContent = missingEmailCount;
+
+                // Display table
+                displayTable(allDocuments);
+
+                log(`✅ Loaded successfully! Sent: ${sentCount}, Not sent: ${notSentCount}, Missing email: ${missingEmailCount}`, 'success');
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error('Error loading documents:', error);
+            } finally {
+                document.getElementById('loadAllBtn').disabled = false;
+            }
+        }
+
+        window.loadUsers = async function() {
+            try {
+                document.getElementById('loadUsersBtn').disabled = true;
+                log('👥 Loading users collection...', 'info');
+
+                const querySnapshot = await getDocs(collection(db, 'users'));
+                
+                log(`📊 Found ${querySnapshot.size} users`, 'success');
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    log(`👤 User ${doc.id}:`, 'info');
+                    log(`   email: "${data.email}"`, 'info');
+                    log(`   userType: "${data.userType}"`, 'info');
+                    log(`   farmName: "${data.farmName}"`, 'info');
+                    log('---', 'info');
+                });
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('loadUsersBtn').disabled = false;
+            }
+        }
+
+        window.filterByEmail = function() {
+            const email = document.getElementById('filterEmail').value.trim();
+            if (!email) {
+                displayTable(allDocuments);
+                return;
+            }
+
+            log(`🔍 Filtering by supervisor email: "${email}"`, 'info');
+            
+            const filtered = allDocuments.filter(doc => {
+                const match = doc.supervisorEmail === email && doc.sentToSupervisor === true;
+                if (!match && doc.sentToSupervisor === true) {
+                    log(`   ❌ Document ${doc.id}: supervisorEmail "${doc.supervisorEmail}" !== "${email}"`, 'warning');
+                }
+                return match;
+            });
+
+            log(`   Found ${filtered.length} matching documents`, filtered.length > 0 ? 'success' : 'warning');
+            displayTable(filtered);
+        }
+
+        function displayTable(documents) {
+            if (documents.length === 0) {
+                document.getElementById('tableContainer').innerHTML = '<div class="alert alert-danger">No documents found</div>';
+                return;
+            }
+
+            let html = '<table><thead><tr>';
+            html += '<th>ID</th>';
+            html += '<th>Date</th>';
+            html += '<th>Batch ID</th>';
+            html += '<th>User</th>';
+            html += '<th>Sent?</th>';
+            html += '<th>Supervisor Email</th>';
+            html += '<th>Full Data</th>';
+            html += '</tr></thead><tbody>';
+
+            documents.forEach(doc => {
+                html += '<tr>';
+                html += `<td>${doc.id.substring(0, 8)}...</td>`;
+                html += `<td>${doc.date || 'N/A'}</td>`;
+                html += `<td>${doc.batchId || 'N/A'}</td>`;
+                html += `<td>${doc.userName || 'N/A'}</td>`;
+                
+                if (doc.sentToSupervisor === true) {
+                    html += '<td><span class="badge badge-success">✓ Sent</span></td>';
+                } else {
+                    html += '<td><span class="badge badge-danger">✗ Not Sent</span></td>';
+                }
+
+                if (doc.supervisorEmail && doc.supervisorEmail.trim() !== '') {
+                    html += `<td><span class="highlight-email">${doc.supervisorEmail}</span></td>`;
+                } else {
+                    html += '<td><span class="badge badge-warning">MISSING</span></td>';
+                }
+
+                html += `<td><button onclick='showJson(${JSON.stringify(doc).replace(/'/g, "\\'")})'> View JSON</button></td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        window.showJson = function(obj) {
+            alert(JSON.stringify(obj, null, 2));
+        }
+
+        // Check auth state
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                log(`✅ Authenticated as: ${user.email}`, 'success');
+            } else {
+                log(`⚠️ Not authenticated. Some features may not work.`, 'warning');
+            }
+        });
+
+        // Auto-load on page load
+        window.addEventListener('load', () => {
+            log('🚀 Inspector ready. Click "Load All Documents" to start.', 'info');
+        });
+
+    </script>
+</body>
+</html>

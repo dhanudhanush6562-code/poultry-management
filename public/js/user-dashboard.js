@@ -1,4 +1,4 @@
-import { auth, db, storage } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
 import { signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import {
     collection,
@@ -12,14 +12,8 @@ import {
     getDoc,
     deleteDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
 let currentUser = null;
-let uploadedPhotoFile = null;
 
 // Check authentication
 async function checkAuth() {
@@ -90,31 +84,6 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
-// Photo preview
-document.getElementById('photoUpload').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        // Check file size (limit to 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-        if (file.size > maxSize) {
-            showAlert('❌ Photo size too large! Please upload a photo smaller than 5MB.', 'error');
-            e.target.value = ''; // Clear the input
-            document.getElementById('photoPreview').classList.add('hidden');
-            uploadedPhotoFile = null;
-            return;
-        }
-        
-        uploadedPhotoFile = file;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.getElementById('photoPreview');
-            preview.src = e.target.result;
-            preview.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
 // Set today's date as default
 document.getElementById('entryDate').valueAsDate = new Date();
 
@@ -142,23 +111,6 @@ document.getElementById('dailyDataForm').addEventListener('submit', async (e) =>
 
     try {
         showAlert('Saving data...', 'info');
-
-        // Upload photo if exists
-        if (uploadedPhotoFile) {
-            console.log('Uploading photo:', uploadedPhotoFile.name, 'Size:', uploadedPhotoFile.size);
-            try {
-                const photoRef = ref(storage, `photos/${currentUser.uid}/${Date.now()}_${uploadedPhotoFile.name}`);
-                console.log('Photo ref created, uploading...');
-                await uploadBytes(photoRef, uploadedPhotoFile);
-                console.log('Photo uploaded, getting URL...');
-                formData.photoUrl = await getDownloadURL(photoRef);
-                console.log('Photo URL obtained:', formData.photoUrl);
-            } catch (photoError) {
-                console.error('Photo upload error:', photoError);
-                showAlert('❌ Error uploading photo: ' + photoError.message + '\n\nSaving data without photo...', 'warning');
-                // Continue without photo
-            }
-        }
 
         // Save to Firestore
         console.log('Saving to Firestore...', formData);
@@ -349,7 +301,7 @@ async function loadUserData(filterBatchId = '', filterBatchNumber = '', filterDa
             
             // Create action buttons based on sent status
             let actionButtons = `
-                <button class="btn btn-info view-detail-btn" data-id="${item.id}" style="margin: 2px;">👁️ View</button>
+                <button class="btn btn-info view-detail-btn" data-id="${item.id}" style="margin: 2px;">View</button>
             `;
             
             // Show "Send to Supervisor" button only if NOT sent yet
@@ -361,7 +313,7 @@ async function loadUserData(filterBatchId = '', filterBatchNumber = '', filterDa
             
             // Always show Delete button
             actionButtons += `
-                <button class="btn btn-danger delete-data-btn" data-id="${item.id}" style="margin: 2px;">🗑️ Delete</button>
+                <button class="btn btn-danger delete-data-btn" data-id="${item.id}" style="margin: 2px;">Delete</button>
             `;
             
             // Status badge

@@ -4,7 +4,9 @@ import {
     setPersistence,
     browserSessionPersistence,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { 
     doc,
@@ -124,6 +126,43 @@ loginForm?.addEventListener('submit', async (e) => {
     }
 });
 
+// Check for redirect result on page load
+getRedirectResult(auth).then(async (result) => {
+    if (result && result.user) {
+        console.log('Google Sign-In successful via redirect:', result.user.email);
+        const user = result.user;
+        
+        // Get or create user data in Firestore
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        
+        let userData;
+        if (!userDoc.exists()) {
+            userData = {
+                uid: user.uid,
+                fullName: user.displayName || 'User',
+                email: user.email,
+                userType: 'user',
+                createdAt: new Date().toISOString()
+            };
+            await setDoc(doc(db, 'users', user.uid), userData);
+        } else {
+            userData = userDoc.data();
+        }
+        
+        sessionStorage.setItem('currentUser', JSON.stringify(userData));
+        
+        if (userData.userType === 'supervisor') {
+            window.location.href = '/supervisor-dashboard';
+        } else {
+            window.location.href = '/user-dashboard';
+        }
+    }
+}).catch((error) => {
+    if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Redirect result error:', error);
+    }
+});
+
 // Google Sign-In
 const googleSignInBtn = document.getElementById('googleSignInBtn');
 console.log('Google Sign-In button found:', googleSignInBtn);
@@ -143,45 +182,58 @@ if (googleSignInBtn) {
         googleSignInBtn.style.cursor = 'not-allowed';
         
         try {
-            showAlert('Opening Google Sign-In popup...', 'info');
-            
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({
                 prompt: 'select_account'
             });
-            console.log('Opening Google Sign-In popup...');
-            const result = await signInWithPopup(auth, provider);
-            console.log('Google Sign-In successful:', result.user.email);
-            const user = result.user;
             
-            // Get or create user data in Firestore
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            // Try popup first
+            try {
+                showAlert('Opening Google Sign-In...', 'info');
+                console.log('Attempting popup sign-in...');
+                const result = await signInWithPopup(auth, provider);
+                console.log('Google Sign-In successful:', result.user.email);
+                const user = result.user;
             
-            let userData;
-            if (!userDoc.exists()) {
-                // Create new user document
-                userData = {
-                    uid: user.uid,
-                    fullName: user.displayName || 'User',
-                    email: user.email,
-                    userType: 'user',
-                    createdAt: new Date().toISOString()
-                };
-                await setDoc(doc(db, 'users', user.uid), userData);
-            } else {
-                userData = userDoc.data();
-            }
-            
-            sessionStorage.setItem('currentUser', JSON.stringify(userData));
-            showAlert('Login successful! Redirecting...', 'success');
-            
-            setTimeout(() => {
-                if (userData.userType === 'supervisor') {
-                    window.location.href = '/supervisor-dashboard';
+                // Get or create user data in Firestore
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                
+                let userData;
+                if (!userDoc.exists()) {
+                    // Create new user document
+                    userData = {
+                        uid: user.uid,
+                        fullName: user.displayName || 'User',
+                        email: user.email,
+                        userType: 'user',
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(doc(db, 'users', user.uid), userData);
                 } else {
-                    window.location.href = '/user-dashboard';
+                    userData = userDoc.data();
                 }
-            }, 1500);
+                
+                sessionStorage.setItem('currentUser', JSON.stringify(userData));
+                showAlert('Login successful! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    if (userData.userType === 'supervisor') {
+                        window.location.href = '/supervisor-dashboard';
+                    } else {
+                        window.location.href = '/user-dashboard';
+                    }
+                }, 1500);
+                
+            } catch (popupError) {
+                // If popup fails, try redirect method
+                if (popupError.code === 'auth/popup-blocked') {
+                    console.log('Popup blocked, trying redirect method...');
+                    showAlert('Redirecting to Google Sign-In...', 'info');
+                    await signInWithRedirect(auth, provider);
+                    return; // Page will reload after redirect
+                }
+                throw popupError; // Re-throw other errors
+            }
             
         } catch (error) {
             // Only log errors that aren't user-cancelled actions
@@ -193,7 +245,7 @@ if (googleSignInBtn) {
                 // User closed popup - just show friendly message, no console error
                 showAlert('Sign-In cancelled. Click the button again to retry.', 'warning');
             } else if (error.code === 'auth/popup-blocked') {
-                showAlert('Popup blocked by browser. Please allow popups and try again.', 'error');
+                showAlert('Redirecting to Google Sign-In...', 'info');
             } else if (error.code === 'auth/operation-not-allowed') {
                 showAlert('Google Sign-In not enabled in Firebase Console.', 'error');
             } else if (error.code === 'auth/cancelled-popup-request') {
